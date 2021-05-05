@@ -10,8 +10,6 @@ GIT_ROOT=`git rev-parse --show-superproject-working-tree --show-toplevel | head 
 HOOK_NAME=`basename $0`
 LOCAL_HOOK="${GIT_ROOT}/.git/hooks/${HOOK_NAME}"
 
-open -a "Google Chrome" https://www.notion.so/975d1ec2497743b3a1a5dd70fbcdca11
-
 if [ -e $LOCAL_HOOK ]; then
   source $LOCAL_HOOK
 fi
@@ -61,6 +59,43 @@ if [ ${branch} = master ]; then
 EOF
 	exit 1
 fi
+
+# https://qiita.com/k0kubun/items/8f6d7eded1d833187449
+if git-rev-parse --verify HEAD >/dev/null 2>&1; then
+  against=HEAD
+else
+  # Initial commit: diff against an empty tree object
+  against=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+fi
+
+for diff in $(git diff-index --check --cached $against -- |
+  grep 'trailing whitespace' | sed 's/: trailing whitespace.//'); do
+  file=$(echo "$diff" | sed 's/:[^:]*$//')
+  line=$(echo "$diff" | sed 's/^[^:]*://')
+
+  sed -i '' -e "$line"'s/ *$//' "$file"
+  git add "$file"
+done
+
+# チェックリストを表示させる
+echo "チェックリストを確認しましたか? (y/n): "
+exec < /dev/tty
+read str
+
+case "$str" in
+	[Yy]*)
+		echo "チェックしました。"
+		;;
+	[Nn]|"")
+		echo "再度チェックリストを確認してください。"
+		open -a "Google Chrome" https://www.notion.so/975d1ec2497743b3a1a5dd70fbcdca11
+		exit 1
+		;;
+	*)
+		echo "undefined"
+		exit 1
+		;;
+esac
 
 # If there are whitespace errors, print the offending file names and fail.
 exec git diff-index --check --cached $against --
