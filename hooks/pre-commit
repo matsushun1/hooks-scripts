@@ -77,6 +77,49 @@ for diff in $(git diff-index --check --cached $against -- |
   git add "$file"
 done
 
+# Testファイル以外でconsole.logやprint関数が混入していないかチェックする
+# https://gist.github.com/guilherme/9604324
+# https://qiita.com/myblackcat7112/items/5e8205f1b5161a1f8590
+console='console.log'
+println='println'
+# CHECK
+files=`git status|grep -e "modified" -e "new file"|sed "s/new file:\(.*\)/\1/g"|sed "s/modified:\(.*\)/\1/g"|cut -f 2`
+for file in $files
+do
+    echo name:$file;
+
+    # Test用以外のファイルを対象とする
+    if [ ! "`echo $file | grep 'Test'`" ]; then
+       echo check... $console, $println in $file;
+        result=`less $file | grep -e "$console" -e "$println"`;
+
+        if [ -z $result ]; then
+            echo "デバッグコードは含まれていませんでした。\n";
+        else
+            echo $result;
+            echo '[warn] デバッグコードが混入していますが、問題ないですか? [y/N]'
+
+            exec < /dev/tty
+            read answer
+
+            case $answer in
+							[Yy])
+								echo 'デバッグコードを無視しました。'
+								;;
+              [Nn])
+								echo 'コミットしませんでした。'
+								exit 1;;
+							*)
+								echo 'y/n以外が入力されたため、コミットしませんでした。'
+								exit 1;;
+            esac
+            git add $file;
+            echo $file;
+        fi
+    fi
+done
+
+
 # チェックリストを表示させる
 echo "チェックリストを確認しましたか? (y/n): "
 exec < /dev/tty
