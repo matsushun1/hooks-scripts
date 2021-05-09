@@ -82,6 +82,7 @@ done
 # https://qiita.com/myblackcat7112/items/5e8205f1b5161a1f8590
 console='console.log'
 println='println'
+todo = 'TODO'
 # CHECK
 files=`git status|grep -e "modified" -e "new file"|sed "s/new file:\(.*\)/\1/g"|sed "s/modified:\(.*\)/\1/g"|cut -f 2`
 for file in $files
@@ -90,7 +91,7 @@ do
 
     # Test用以外のファイルを対象とする
     if [ ! "`echo $file | grep 'Test'`" ]; then
-       echo check... $console, $println in $file;
+        echo check... $console, $println, $todo in $file;
         result=`less $file | grep -e "$console" -e "$println"`;
 
         if [ -z $result ]; then
