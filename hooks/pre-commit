@@ -6,6 +6,7 @@
 # it wants to stop the commit.
 #
 # To enable this hook, rename this file to "pre-commit".
+# TODO: 関数化
 GIT_ROOT=`git rev-parse --show-superproject-working-tree --show-toplevel | head -1`
 HOOK_NAME=`basename $0`
 LOCAL_HOOK="${GIT_ROOT}/.git/hooks/${HOOK_NAME}"
@@ -26,6 +27,7 @@ fi
 allownonascii=$(git config --bool hooks.allownonascii)
 
 # Redirect output to stderr.
+# 1>&2: 標準エラー出力
 exec 1>&2
 
 # Cross platform projects tend to avoid non-ASCII filenames; prevent
@@ -52,10 +54,12 @@ EOF
 	exit 1
 fi
 
+# masterとdevelopブランチに直接pushしないよう、警告を出す
 branch=`git symbolic-ref HEAD --short`
-if [ ${branch} = master ]; then
+forbiddenBranch='^develop.+'
+if [ ${branch} = master ] || [[ ${branch} =~ ${forbiddenBranch} ]]; then
 	cat <<\EOF
-	エラー：masterブランチにcommitはできません。
+	エラー：masterやdevelopブランチにcommitはできません。
 EOF
 	exit 1
 fi
@@ -82,7 +86,8 @@ done
 # https://qiita.com/myblackcat7112/items/5e8205f1b5161a1f8590
 console='console.log'
 println='println'
-todo = 'TODO'
+todo='TODO:'
+forbiddenWords=("console.log" "println" "TODO:")
 # CHECK
 files=`git status|grep -e "modified" -e "new file"|sed "s/new file:\(.*\)/\1/g"|sed "s/modified:\(.*\)/\1/g"|cut -f 2`
 for file in $files
@@ -90,15 +95,22 @@ do
     echo name:$file;
 
     # Test用以外のファイルを対象とする
-    if [ ! "`echo $file | grep 'Test'`" ]; then
-        echo check... $console, $println, $todo in $file;
-        result=`less $file | grep -e "$console" -e "$println"`;
+		# TODO: チェック対象のファイルを追加する
+		filesToCheck=('.*.js' '.*.vue$' '.*.kt$' '.*.md$')
+		for fileToCheck in "${filesToCheck[@]}"
+		do
 
+    if [[ "`echo $file | grep $fileToCheck`" ]]; then
+
+        echo check... $console, $println, $todo in $file;
+        result=`less $file | grep -e $println -e $console -e $todo | sed 's/ //g' | tail -n 1`;
+
+				echo res:$result
         if [ -z $result ]; then
             echo "デバッグコードは含まれていませんでした。\n";
         else
             echo $result;
-            echo '[warn] デバッグコードが混入していますが、問題ないですか? [y/N]'
+            echo '[warn] デバッグコードが混入していますが、問題ないですか? [y/n]'
 
             exec < /dev/tty
             read answer
@@ -118,6 +130,8 @@ do
             echo $file;
         fi
     fi
+
+		done
 done
 
 
