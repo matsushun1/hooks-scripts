@@ -17,7 +17,7 @@ jobs:
             date.setDate(date.getDate() + 7)
             const due_on = date.toISOString()
             const endDate = (date.getMonth() + 1) + "/" + date.getDate()
-            window.confirm('ラベルが作成されました。')
+            alert('ラベルが作成されました。')
             github.issues.createMilestone({
               owner: context.repo.owner,
               repo: context.repo.repo,
