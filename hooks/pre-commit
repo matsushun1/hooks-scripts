@@ -81,58 +81,35 @@ for diff in $(git diff-index --check --cached $against -- |
   git add "$file"
 done
 
-# Testファイル以外でconsole.logやprint関数が混入していないかチェックする
+
+# console.logやprint関数等が混入していないかチェックする
 # https://gist.github.com/guilherme/9604324
 # https://qiita.com/myblackcat7112/items/5e8205f1b5161a1f8590
-console='console.log'
-println='println'
-todo='TODO:'
-forbiddenWords=("console.log" "println" "TODO:")
-# CHECK
-files=`git status|grep -e "modified" -e "new file"|sed "s/new file:\(.*\)/\1/g"|sed "s/modified:\(.*\)/\1/g"|cut -f 2`
-for file in $files
-do
-    echo name:$file;
+forbiddenWords=("-e console.log" "-e println" "-e TODO:")
 
-    # Test用以外のファイルを対象とする
-		# TODO: チェック対象のファイルを追加する
-		filesToCheck=('.*.js' '.*.vue$' '.*.kt$' '.*.md$')
-		for fileToCheck in "${filesToCheck[@]}"
-		do
+diff=`git diff HEAD --no-ext-diff --unified=0 --exit-code -a --no-prefix | egrep "^\+"| grep ${forbiddenWords[@]}`
+if [[ -z $diff ]]; then
+  echo "デバッグコードは含まれていませんでした。\n";
+else
+  echo $diff;
+  echo '[warn] デバッグコードが混入していますが、問題ないですか? [y/n]'
 
-    if [[ "`echo $file | grep $fileToCheck`" ]]; then
-
-        echo check... $console, $println, $todo in $file;
-        result=`less $file | grep -e $println -e $console -e $todo | sed 's/ //g' | tail -n 1`;
-
-				echo res:$result
-        if [ -z $result ]; then
-            echo "デバッグコードは含まれていませんでした。\n";
-        else
-            echo $result;
-            echo '[warn] デバッグコードが混入していますが、問題ないですか? [y/n]'
-
-            exec < /dev/tty
-            read answer
-
-            case $answer in
-							[Yy])
-								echo 'デバッグコードを無視しました。'
-								;;
-              [Nn])
-								echo 'コミットしませんでした。'
-								exit 1;;
-							*)
-								echo 'y/n以外が入力されたため、コミットしませんでした。'
-								exit 1;;
-            esac
-            git add $file;
-            echo $file;
-        fi
-    fi
-
-		done
-done
+  exec < /dev/tty
+  read ans
+  case $answer in
+		[Yy])
+			echo 'デバッグコードを無視しました。'
+			;;
+    [Nn])
+			echo 'コミットしませんでした。'
+			exit 1;;
+		*)
+			echo 'y/n以外が入力されたため、コミットしませんでした。'
+			exit 1;;
+  esac
+  git add $file;
+  echo $file;
+fi
 
 
 # チェックリストを表示させる
